@@ -1,57 +1,45 @@
-// sw.js - DEAD HAND service worker
-// Caches the app shell so the PWA opens offline.
-
-const CACHE_NAME = "deadhand-v5-2";
+// sw.js - DEAD HAND - FIXED, NO STUCK VERSION
+const CACHE_NAME = "deadhand-v6-2";
 const CORE = [
-    "./",
-    "./index.html",
-    "./manifest.json",
-    "./icon-192.png",
-    "./icon-512.png"
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE)).catch(() => {})
-    );
-    self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE))
+  );
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-    event.waitUntil(
-        caches.keys().then((keys) =>
-            Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-        )
-    );
-    self.clients.claim();
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-    const req = event.request;
-    if (req.method !== "GET") return;
-
-    const url = new URL(req.url);
-
-    // Never cache Firebase, BulkSMS, Resend, or map tiles
-    if (
-        url.hostname.includes("firebase") ||
-        url.hostname.includes("bulksms") ||
-        url.hostname.includes("resend") ||
-        url.hostname.includes("tile.openstreetmap") ||
-        url.hostname.includes("unpkg.com") ||
-        url.hostname.includes("gstatic.com")
-    ) {
-        return;
-    }
-
+  // For page navigation, ALWAYS try network first = no stuck updates
+  if (event.request.mode === "navigate") {
     event.respondWith(
-        caches.match(req).then((cached) => {
-            return cached || fetch(req).then((res) => {
-                if (!res || res.status !== 200 || res.type === "opaque") return res;
-                const copy = res.clone();
-                caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
-                return res;
-            }).catch(() => caches.match("./index.html"));
+      fetch(event.request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+          return res;
         })
+        .catch(() => caches.match("./index.html"))
     );
+    return;
+  }
+  // For images etc, cache first
+  event.respondWith(
+    caches.match(event.request).then(cached => cached || fetch(event.request))
+  );
 });
