@@ -1832,28 +1832,24 @@ window.addEventListener("load", function() {
     if ($("willRecipients") && willRecipientCount === 0) addWillRecipient();
 
     const armed = localStorage.getItem("dh_armed");
-    const savedDeadline = localStorage.getItem("dh_deadline");
-    if (armed === "1" && savedDeadline) {
-        deadline = parseInt(savedDeadline, 10);
-        const data = JSON.parse(localStorage.getItem("dh_data") || "{}");
-        const banner = $("activeBanner"); if (banner) banner.classList.remove("hidden");
-        const at = $("activeText");
-        if (at) at.innerText = (data.type || "").toUpperCase() + " ARMED";
-        if (deadline <= Date.now()) { openScreen("armed"); trigger(); return; }
-        checkBanner();
-    }
+  const savedDeadline = localStorage.getItem("dh_deadline");
+  if (armed === "1" && savedDeadline) {
+      deadline = parseInt(savedDeadline, 10);
+      const data = JSON.parse(localStorage.getItem("dh_data") || "{}");
+      const banner = $("activeBanner"); if (banner) banner.style.display = "block";
+      const at = $("activeText");
+      if (at) at.innerText = (data.type || "").toUpperCase();
+      if (deadline <= Date.now()) { openScreen("armed") }
+      checkBanner();
+  }
 });
 
-      });
-    
-    // PWA - REGISTER SERVICE WORKER
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js')
-        .then(() => console.log('SW registered'))
-        .catch(err => console.log('SW fail', err));
-    }
-</script>
-
+// PWA - REGISTER SERVICE WORKER
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('SW registered'))
+    .catch(err => console.log('SW fail', err));
+}
 </script>
 
 </body>
