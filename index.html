@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DEAD HAND">
+
+<title>DEAD HAND V5.2</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+<!-- Leaflet (live map) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+<!-- 🔐 SECRETS — this file is gitignored, upload it manually to hosting -->
+<script src="secrets.js"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+body {
+    margin: 0;
+    background: #0a0a0a;
+    color: #fff;
+    padding: 0;
+    padding-top: 70px;
+    min-height: 100vh;
+}
+
+/* ===== FIXED HEADER ===== */
+.fixed-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #0a0a0a;
+    border-bottom: 1px solid #222;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+}
+.fixed-header h1 {
+    color: #ff2222;
+    font-size: 20px;
+    letter-spacing: 3px;
+    margin: 0;
+    flex-shrink: 0;
+}
+.fixed-header .header-sub {
+    color: #555;
+    font-size: 8px;
+    text-align: right;
+    line-height: 1.2;
+}
+.fixed-header .back-btn {
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 10px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    display: none;
+    font-weight: bold;
+}
+.fixed-header .back-btn:hover {
+    background: #333;
+}
+.fixed-header .back-btn.visible {
+    display: inline-block;
+}
+
+/* ===== MAIN CONTENT ===== */
+.main-content {
+    padding: 12px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.sub {
+    text-align: center;
+    color: #555;
+    font-size: 10px;
+    margin-bottom: 12px;
+}
+.card {
+    background: #151515;
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 14px;
+    margin: 10px 0;
+}
+label {
+    font-size: 11px;
+    color: #888;
+    display: block;
+    margin-top: 10px;
+}
+input, textarea, select {
+    width: 100%;
+    padding: 13px;
+    background: #000;
+    border: 1px solid #444;
+    border-radius: 10px;
+    color: #fff;
+    margin-top: 4px;
+    font-size: 15px;
+    outline: none;
+}
+input:focus, textarea:focus, select:focus {
+    border-color: #ff2222;
+}
+textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+.btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 14px;
+    font-weight: bold;
+    font-size: 16px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+.btn-red { background: #ff2222; color: #fff; }
+.btn-green { background: #22c55e; color: #000; }
+.btn-dark { background: #222; color: #fff; border: 1px solid #444; }
+.btn-gold { background: #d4a017; color: #000; }
+.btn-purple { background: #7c3aed; color: #fff; }
+.btn-small { padding: 8px 12px; font-size: 12px; width: auto; margin-top: 4px; }
+
+#timer {
+    font-size: 42px;
+    text-align: center;
+    font-weight: 900;
+    color: #22c55e;
+    margin: 10px 0;
+}
+.hidden { display: none !important; }
+.homeBtn { padding: 28px; font-size: 18px; border-radius: 20px; }
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; }
+
+.locationBox {
+    background: #000;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 5px;
+    text-align: center;
+    font-size: 11px;
+    min-height: 65px;
+}
+.location-good { color: #22c55e; }
+.location-loading { color: #888; }
+.location-error { color: #ff5555; }
+.mapLink {
+    display: inline-block;
+    margin-top: 8px;
+    color: #22c55e;
+    text-decoration: none;
+    font-weight: bold;
+}
+.info {
+    color: #666;
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.5;
+    margin-top: 10px;
+}
+.warning {
+    background: #210b0b;
+    border: 1px solid #552222;
+    color: #ff7777;
+    border-radius: 10px;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 10px;
+    line-height: 1.5;
+}
+.success {
+    background: #09200f;
+    border: 1px solid #155c2d;
+    color: #4ade80;
+    border-radius: 10px;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 10px;
+}
+.sms-status {
+    background: #1a1a2e;
+    border: 1px solid #4a4a6a;
+    color: #a8a8d8;
+    border-radius: 10px;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 10px;
+    line-height: 1.5;
+    max-height: 150px;
+    overflow-y: auto;
+}
+.will-recipient {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 12px;
+    margin: 8px 0;
+}
+.recipient-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.recipient-header strong { color: #d4a017; font-size: 12px; }
+.inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+.inline input[type="checkbox"] { width: auto; margin: 0; }
+
+/* ===== V5.2 ADDITIONS ===== */
+.premium-badge {
+    display: inline-block;
+    background: #d4a017;
+    color: #000;
+    font-size: 9px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 6px;
+    margin-left: 6px;
+    letter-spacing: 1px;
+}
+.lock-icon { font-size: 11px; color: #d4a017; }
+
+.member-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin: 6px 0;
+    font-size: 12px;
+}
+.member-row .member-name { color: #fff; font-weight: bold; }
+.member-row .member-dist { color: #22c55e; font-weight: bold; font-size: 11px; }
+.member-row .member-dist.far { color: #ff5555; }
+
+.group-code-box {
+    background: #000;
+    border: 1px dashed #444;
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: #22c55e;
+    margin-top: 4px;
+}
+
+.group-alert-banner {
+    background: #2a0000;
+    border: 1px solid #ff2222;
+    color: #ff7777;
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 10px;
+    font-size: 11px;
+    line-height: 1.5;
+}
+.group-alert-banner a { color: #22c55e; font-weight: bold; }
+
+.shake { animation: shake 0.35s; }
+@keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+}
+
+.price-tag {
+    text-align: center;
+    font-size: 22px;
+    font-weight: 900;
+    color: #d4a017;
+    margin: 14px 0 4px 0;
+}
+.feature-list {
+    font-size: 11px;
+    color: #aaa;
+    line-height: 1.8;
+    margin-top: 8px;
+}
+.feature-list li { margin-left: 12px; }
+
+.long-press-hint {
+    text-align: center;
+    font-size: 9px;
+    color: #444;
+    margin-top: 6px;
+}
+
+/* Live map */
+.map-box {
+    width: 100%;
+    height: 240px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    margin-top: 8px;
+    overflow: hidden;
+    background: #000;
+}
+.map-box.tall { height: 300px; }
+.backend-status {
+    text-align: center;
+    font-size: 10px;
+    color: #666;
+    margin-top: 10px;
+}
+.backend-status .ok { color: #22c55e; }
+.backend-status .warn { color: #d4a017; }
+.backend-status .err { color: #ff5555; }
+
+/* Home footer links */
+.home-footer {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 18px;
+    font-size: 11px;
+}
+.home-footer a {
+    color: #666;
+    text-decoration: none;
+    cursor: pointer;
+}
+.home-footer a:hover { color: #ff2222; }
+
+/* About / Policy text */
+.legal h3 {
+    margin: 14px 0 6px 0;
+    color: #d4a017;
+    font-size: 13px;
+}
+.legal p, .legal li {
+    color: #aaa;
+    font-size: 11.5px;
+    line-height: 1.7;
+    margin: 6px 0;
+}
+.legal ul { padding-left: 18px; margin: 6px 0; }
+.legal .brand {
+    text-align: center;
+    margin: 10px 0 14px 0;
+}
+.legal .brand .logo { font-size: 42px; }
+.legal .brand .name {
+    font-size: 15px;
+    font-weight: bold;
+    color: #fff;
+    margin-top: 6px;
+}
+.legal .brand .labs {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+}
+.legal .meta {
+    text-align: center;
+    font-size: 11px;
+    color: #888;
+    margin-top: 10px;
+    line-height: 1.7;
+}
+.legal .meta .flag { font-size: 14px; }
+.legal a { color: #22c55e; text-decoration: none; word-break: break-all; }
+.legal a:hover { text-decoration: underline; }
+.legal .updated {
+    text-align: center;
+    font-size: 10px;
+    color: #555;
+    margin-top: 12px;
+    font-style: italic;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ===== FIXED HEADER ===== -->
+<header class="fixed-header">
+    <h1>DEAD HAND</h1>
+    <div style="display:flex;align-items:center;gap:10px;">
+        <span class="header-sub">SAFETY • WILL<br>SMS • EMAIL</span>
+        <button class="back-btn" id="backBtn" onclick="goBack()">← BACK</button>
+    </div>
+</header>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="main-content">
+
+<!-- HOME SCREEN -->
+<div id="homeScreen">
+    <div class="card" style="text-align:center;padding:24px">
+        <div style="font-size:48px">☠️</div>
+        <div style="color:#888;font-size:12px;margin:10px 0">Choose a mode. The other modes stay hidden.</div>
+
+        <button class="btn btn-red homeBtn" id="btnSafety" data-mode="safety">
+            🛡️ SAFETY MODE <span class="premium-badge">PREMIUM</span><br>
+            <span style="font-size:11px;font-weight:normal">1 Minute – 24 Hours <span class="lock-icon" id="lockSafety">🔒</span></span>
+        </button>
+
+        <button class="btn btn-purple homeBtn" onclick="openScreen('group')">
+            👥 GROUP SAFETY MODE <span style="font-size:9px;background:#22c55e;color:#000;font-weight:bold;padding:2px 6px;border-radius:6px;letter-spacing:1px;">FREE</span><br>
+            <span style="font-size:11px;font-weight:normal">Live GPS • 100m Auto-Alert</span>
+        </button>
+
+        <button class="btn btn-gold homeBtn" id="btnWill" data-mode="will">
+            📜 WILL MODE <span class="premium-badge">PREMIUM</span><br>
+            <span style="font-size:11px;font-weight:normal">Last Message <span class="lock-icon" id="lockWill">🔒</span></span>
+        </button>
+
+        <div class="long-press-hint">Tip: hold a premium button for 2s</div>
+
+        <div id="activeBanner" class="hidden card" style="border-color:#ff2222;background:#1a0000;">
+            <div style="color:#ff2222;font-weight:bold;text-align:center;">⚠️ SYSTEM ARMED</div>
+            <div id="activeText" style="text-align:center;font-size:12px;color:#ffcc66;margin-top:5px;"></div>
+            <div id="miniTimer" style="text-align:center;font-size:22px;font-weight:bold;color:#22c55e;margin-top:5px;"></div>
+            <button class="btn btn-green" onclick="resumeArmed()">OPEN ACTIVE SYSTEM</button>
+            <button class="btn btn-dark" onclick="disarm()">DISARM ALL</button>
+        </div>
+
+        <div class="home-footer">
+            <a onclick="openScreen('about')">About</a>
+            <a onclick="openScreen('policy')">Privacy Policy</a>
+        </div>
+    </div>
+</div>
+
+<!-- ABOUT SCREEN -->
+<div id="aboutScreen" class="hidden">
+    <div class="card legal" style="border-color:#d4a017">
+        <div class="brand">
+            <div class="logo">☠️</div>
+            <div class="name">DEAD HAND</div>
+            <div class="labs">by Joheliv Labs</div>
+        </div>
+
+        <p style="text-align:center;color:#aaa;">
+            DEAD HAND is a personal safety application that automatically notifies your trusted
+            contacts if you don't check in — and helps small groups stay connected through live
+            location while they travel together.
+        </p>
+
+        <h3>🛡️ Safety Mode</h3>
+        <p>Set a check-in timer from 1 minute to 24 hours. If you don't check in before it runs out, DEAD HAND sends your last known GPS location to your emergency contacts by SMS and Email.</p>
+
+        <h3>👥 Group Safety Mode</h3>
+        <p>Invite 2–4 friends to a shared group using a code. Everyone sees each other live on a map, and if anyone drifts more than 100 metres away, an alert with a live map link is sent automatically.</p>
+
+        <h3>📜 Will Mode</h3>
+        <p>For long-term situations — months or years. Your final message, land papers, or last words are stored and delivered automatically to up to 7 recipients if you never check back in.</p>
+
+        <h3>👤 Who We Are</h3>
+        <p>
+            <strong>Joheliv Labs</strong> — also known as <strong>Jason's Labs</strong> — is an independent software studio based in South Africa. We build privacy-first safety tools for everyday people.
+        </p>
+
+        <div class="meta">
+            <div>🇿🇦 <strong>South Africa</strong></div>
+            <div>© 2026 Joheliv Labs · Jason's Labs</div>
+            <div>Contact: <a href="mailto:deadhandjoheliv@gmail.com">deadhandjoheliv@gmail.com</a></div>
+        </div>
+
+        <button class="btn btn-dark" onclick="goBack()" style="margin-top:18px;">← BACK</button>
+    </div>
+</div>
+
+<!-- PRIVACY POLICY SCREEN -->
+<div id="policyScreen" class="hidden">
+    <div class="card legal" style="border-color:#7c3aed">
+        <h3 style="margin-top:0;color:#7c3aed;">📜 PRIVACY POLICY</h3>
+        <div class="updated">Last updated: 2026</div>
+
+        <p>Joheliv Labs ("we", "us") respects your privacy. This policy explains what data DEAD HAND collects, why, and how it's handled.</p>
+
+        <h3>1. What We Collect</h3>
+        <ul>
+            <li><strong>GPS location</strong> — used to include a live map link in emergency alerts and to show group members on the live map while Group Mode is active.</li>
+            <li><strong>Contact details you provide</strong> — names, phone numbers, and email addresses of your chosen emergency contacts and Will recipients.</li>
+            <li><strong>Your message content</strong> — the safety note or Will message you write for delivery if a timer triggers.</li>
+            <li><strong>Device identifier</strong> — a random ID stored in your browser to keep your session consistent. Not linked to your real identity.</li>
+            <li><strong>Delivery metadata</strong> — timestamps and success/failure status of SMS/Email alerts, so you can see what was sent.</li>
+        </ul>
+
+        <h3>2. Why We Collect It</h3>
+        <ul>
+            <li>To send alerts to your chosen contacts if you don't check in.</li>
+            <li>To display live group positions while Group Mode is running.</li>
+            <li>To provide a delivery log so you can audit what happened.</li>
+        </ul>
+
+        <h3>3. Where Data Is Stored</h3>
+        <p>Your data is stored in <strong>Google Firebase Realtime Database</strong> (operated by Google LLC). Location data is shared in real time with other members of your group only while Group Mode is active.</p>
+
+        <h3>4. Who Sees Your Data</h3>
+        <ul>
+            <li><strong>Your emergency contacts / Will recipients</strong> — receive the message and location you set.</li>
+            <li><strong>Your group members</strong> — see your live location only while Group Mode is active.</li>
+            <li><strong>Delivery providers</strong> — BulkSMS (SMS) and Resend (Email) receive only the phone number/email and message content required to deliver.</li>
+            <li>We do not sell, rent, or share your personal data with advertisers.</li>
+        </ul>
+
+        <h3>5. Location Data</h3>
+        <p>Location is only accessed while the app is open and you have granted permission. Group Mode stops transmitting when you tap "Stop Group Tracking" or close the app. Browsers may throttle background updates — the app works best while visible on screen.</p>
+
+        <h3>6. Data Retention</h3>
+        <ul>
+            <li>Local data (device ID, active timer, last location) is stored in your browser and cleared when you tap "Disarm" or clear your browser data.</li>
+            <li>Server-side data (users, group members, delivery events) is retained to support the service. You can request deletion at any time.</li>
+        </ul>
+
+        <h3>7. Your Rights</h3>
+        <p>You can request access to, correction of, or deletion of your data by emailing <a href="mailto:deadhandjoheliv@gmail.com">deadhandjoheliv@gmail.com</a>. We respond within 30 days.</p>
+
+        <h3>8. Children</h3>
+        <p>DEAD HAND is not intended for users under 16. If you believe a child has used the app, contact us and we will delete the data.</p>
+
+        <h3>9. Security</h3>
+        <p>We use HTTPS for all traffic. API credentials for SMS and Email providers are stored server-side and never exposed to other users.</p>
+
+        <h3>10. Changes</h3>
+        <p>We may update this policy. The "Last updated" date will reflect changes. Continued use after changes means you accept the new policy.</p>
+
+        <h3>11. Contact</h3>
+        <p>
+            Joheliv Labs · Jason's Labs<br>
+            South Africa 🇿🇦<br>
+            <a href="mailto:deadhandjoheliv@gmail.com">deadhandjoheliv@gmail.com</a>
+        </p>
+
+        <div class="meta">
+            <div>© 2026 Joheliv Labs · Jason's Labs</div>
+        </div>
+
+        <button class="btn btn-dark" onclick="goBack()" style="margin-top:18px;">← BACK</button>
+    </div>
+</div>
+
+<!-- PREMIUM PAYMENT SCREEN -->
+<div id="premiumScreen" class="hidden">
+    <div class="card" style="border-color:#d4a017">
+        <h3 style="margin:0;color:#d4a017;">🔒 PREMIUM MODE</h3>
+        <div id="premiumTitle" style="font-size:11px;color:#888;margin-top:5px;">Unlock this mode to continue.</div>
+
+        <ul class="feature-list" id="premiumFeatures"></ul>
+
+        <div class="price-tag">R50 <span style="font-size:12px;color:#888;">once-off</span></div>
+
+        <button class="btn btn-gold" onclick="startPayment()">💳 PAY NOW</button>
+        <button class="btn btn-dark" onclick="goBack()">← BACK</button>
+
+        <div class="info">Secure payment gateway opens in the next screen.</div>
+    </div>
+</div>
+
+<!-- DEVELOPER UNLOCK SCREEN -->
+<div id="developerScreen" class="hidden">
+    <div class="card" style="border-color:#7c3aed">
+        <h3 style="margin:0;color:#7c3aed;">🔧 DEVELOPER ACCESS</h3>
+        <div style="font-size:10px;color:#666;margin-top:5px;">Enter developer key to unlock premium modes.</div>
+
+        <label>DEVELOPER KEY</label>
+        <input id="devKeyInput" type="password" inputmode="numeric" placeholder="••••••••••••" autocomplete="off">
+
+        <button class="btn btn-purple" onclick="submitDevKey()">UNLOCK</button>
+        <button class="btn btn-dark" onclick="goBack()">CANCEL</button>
+
+        <div id="devKeyMsg" class="hidden" style="margin-top:10px;"></div>
+    </div>
+</div>
+
+<!-- GROUP SAFETY SCREEN -->
+<div id="groupScreen" class="hidden">
+    <div class="card" style="border-color:#7c3aed">
+        <h3 style="margin:0;color:#7c3aed;">👥 GROUP SAFETY MODE</h3>
+        <div style="font-size:10px;color:#777;margin-top:5px;">2–4 phones • Live GPS over WiFi or Data • 100m auto-alert</div>
+
+        <label>YOUR NAME</label>
+        <input id="g_name" type="text" placeholder="Alice">
+
+        <label>GROUP CODE (share with friends)</label>
+        <div class="group-code-box" id="g_codeBox">DH-____</div>
+        <div class="row" style="margin-top:6px;">
+            <button class="btn btn-dark" style="margin-top:0" onclick="generateGroupCode()">🔄 GENERATE</button>
+        </div>
+
+        <label>OR JOIN EXISTING GROUP</label>
+        <div class="row">
+            <input id="g_joinCode" type="text" placeholder="DH-XXXXX" style="text-transform:uppercase;">
+            <button class="btn btn-dark" style="margin-top:0;max-width:110px;" onclick="joinGroup()">JOIN</button>
+        </div>
+
+        <label>ALERT DISTANCE (METRES)</label>
+        <input id="g_alertDist" type="number" value="100" min="20" max="5000" step="10">
+
+        <label>GROUP MEMBERS</label>
+        <div id="g_members"><div class="info" style="margin-top:4px;">No members yet. Start tracking to see live positions.</div></div>
+
+        <label>LIVE MAP</label>
+        <div id="g_map" class="map-box"></div>
+
+        <div id="g_alertArea"></div>
+
+        <button class="btn btn-green" onclick="startGroupTracking()">🚀 START GROUP TRACKING</button>
+        <button class="btn btn-red" onclick="stopGroupTracking()">🛑 STOP GROUP TRACKING</button>
+        <button class="btn btn-dark" onclick="goBack()">← BACK TO HOME</button>
+
+        <div class="backend-status" id="g_backendStatus">Backend: <span class="warn">not connected</span></div>
+
+        <div class="info">Your position updates every few seconds while tracking is on. Alerts fire when a member crosses the distance threshold.</div>
+    </div>
+</div>
+
+<!-- SAFETY SCREEN -->
+<div id="safetyScreen" class="hidden">
+    <div class="card">
+        <h3 style="margin:0;color:#ff4444;">🛡️ SAFETY MODE</h3>
+        <div style="font-size:10px;color:#777;margin-top:5px;">Set a check-in period from 1 minute to 24 hours.</div>
+        <label>WHERE ARE YOU GOING?</label>
+        <input id="s_where" placeholder="Alice taxi rank to town">
+        <div class="row">
+            <div><label>DURATION</label><input id="s_num" type="number" value="1" min="1" max="24" step="1"></div>
+            <div><label>UNIT</label>
+                <select id="s_unit">
+                    <option value="minutes">Minutes</option>
+                    <option value="hours">Hours</option>
+                </select>
+            </div>
+        </div>
+        <label>LIVE LOCATION</label>
+        <div id="s_loc" class="locationBox location-loading">📍 Getting your GPS location...</div>
+        <div id="s_map" class="map-box"></div>
+        <button class="btn btn-dark" onclick="requestGPS()" style="font-size:13px;padding:12px;">📍 UPDATE MY LOCATION</button>
+        <label>EMERGENCY CONTACT 1 — NAME</label>
+        <input id="s_name1" type="text" placeholder="Alice">
+        <label>EMERGENCY CONTACT 1 — PHONE NUMBER</label>
+        <input id="s_c1" type="tel" placeholder="+27821234567">
+        <label>EMERGENCY CONTACT 1 — EMAIL</label>
+        <input id="s_e1" type="email" placeholder="alice@example.com">
+        <label>EMERGENCY CONTACT 2 — NAME</label>
+        <input id="s_name2" type="text" placeholder="John">
+        <label>EMERGENCY CONTACT 2 — PHONE NUMBER</label>
+        <input id="s_c2" type="tel" placeholder="+27721234567">
+        <label>EMERGENCY CONTACT 2 — EMAIL</label>
+        <input id="s_e2" type="email" placeholder="john@example.com">
+        <button class="btn btn-red" onclick="arm('safety')">🔴 ARM SAFETY MODE</button>
+        <div class="warning">⚠️ If you do not check in before the timer reaches zero, DEAD HAND will automatically send SMS and Email alerts.</div>
+    </div>
+</div>
+
+<!-- WILL SCREEN -->
+<div id="willScreen" class="hidden">
+    <div class="card" style="border-color:#d4a017">
+        <h3 style="margin:0;color:#d4a017;">📜 WILL MODE - PRIVATE</h3>
+        <div style="font-size:10px;color:#666;margin-top:5px;">This screen is hidden from the home screen.</div>
+        <label>SITUATION / TITLE</label>
+        <input id="w_where" placeholder="If I don't check in for 2 years...">
+        <label>DURATION</label>
+        <div class="row">
+            <div><input id="w_num" type="number" value="1" min="1" step="1"></div>
+            <div>
+                <select id="w_unit">
+                    <option value="minutes" selected>Minutes</option>
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                    <option value="months">Months</option>
+                    <option value="years">Years</option>
+                </select>
+            </div>
+        </div>
+        <label>LAST MESSAGE / WILL / PASSWORDS</label>
+        <textarea id="w_will" placeholder="My land papers are..., Tell my family I love them..."></textarea>
+        <label>WILL RECIPIENTS — UP TO 7</label>
+        <div id="willRecipients"></div>
+        <button type="button" class="btn btn-dark" onclick="addWillRecipient()">+ ADD RECIPIENT</button>
+        <div class="info">Each recipient has an email address and an alternative phone number. Both SMS and Email will be sent.</div>
+        <button class="btn btn-gold" onclick="arm('will')">📜 ARM WILL MODE</button>
+        <div class="warning">Will duration: 1 minute minimum, 7 years maximum.</div>
+    </div>
+</div>
+
+<!-- ARMED SCREEN -->
+<div id="armedScreen" class="hidden card">
+    <div id="timer">--:--:--</div>
+    <div style="text-align:center;font-size:12px;">
+        <span id="modeShow" style="font-size:11px;color:#888;"></span> • <span id="whereShow" style="color:#ffcc66;font-size:12px;"></span>
+    </div>
+    <div id="locShow" class="locationBox location-loading">📍 Getting location...</div>
+    <div id="armedMap" class="map-box tall"></div>
+    <button class="btn btn-green" onclick="checkIn()">✅ I'M ALIVE - RESET</button>
+    <button class="btn btn-dark" onclick="disarm()">DISARM - I'M SAFE</button>
+    <button class="btn btn-dark" onclick="openScreen('home')">MINIMIZE TO HOME</button>
+    <div id="smsStatus" class="sms-status hidden">
+        <div style="font-weight:bold;color:#7c3aed;margin-bottom:4px;">📨 Delivery Status</div>
+        <div id="smsLog" style="font-size:10px;color:#a8a8d8;"></div>
+    </div>
+    <div class="info">Your last known GPS location is saved locally and included in the emergency messages.</div>
+</div>
+
+</div>
+
+<script>
+
+// ============================================
+// 🔐 SECRETS (loaded from secrets.js — never in this file)
+// ============================================
+const SECRETS = window.DH_SECRETS || {};
+const BULKSMS_TOKEN_ID     = SECRETS.BULKSMS_TOKEN_ID     || "";
+const BULKSMS_TOKEN_SECRET = SECRETS.BULKSMS_TOKEN_SECRET || "";
+const RESEND_API_KEY       = SECRETS.RESEND_API_KEY       || "";
+
+const BULKSMS_API_BASE = "https://api.bulksms.com/v1";
+const BULKSMS_MESSAGES_URL = BULKSMS_API_BASE + "/messages";
+const BULKSMS_BALANCE_URL = BULKSMS_API_BASE + "/credits/balance";
+
+const RESEND_API_BASE = "https://api.resend.com";
+const RESEND_EMAIL_URL = RESEND_API_BASE + "/emails";
+const RESEND_FROM_EMAIL = SECRETS.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+
+// Warn once if secrets are missing
+if (!BULKSMS_TOKEN_ID || !RESEND_API_KEY) {
+    console.warn("⚠️ secrets.js not loaded or missing keys. SMS/Email will fail.");
+}
+
+// ============================================
+// FIREBASE CONFIGURATION (public — safe to expose)
+// ============================================
+
+const firebaseConfig = {
+    apiKey:            "AIzaSyDNF5lQPOykjetuB4fPQ6XalQJnuWvc9PQ",
+    authDomain:        "dead-man-s-switch-3344a.firebaseapp.com",
+    databaseURL:       "https://dead-man-s-switch-3344a-default-rtdb.firebaseio.com",
+    projectId:         "dead-man-s-switch-3344a",
+    storageBucket:     "dead-man-s-switch-3344a.firebasestorage.app",
+    messagingSenderId: "643809059953",
+    appId:             "1:643809059953:web:387f2b42f7acc480cc67d0",
+    measurementId:     "G-E5LF7CE734"
+};
+
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+function getDeviceId() {
+    let deviceId = localStorage.getItem("dh_device_id");
+    if (!deviceId) {
+        deviceId = "device_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem("dh_device_id", deviceId);
+    }
+    return deviceId;
+}
+const DEVICE_ID = getDeviceId();
+
+// ============================================
+// BACKEND TRANSPORT SWITCH
+// ============================================
+const BACKEND = "firebase"; // "firebase" | "wsjs"
+
+// ============================================
+// WILL MODE URL PLACEHOLDER
+// ============================================
+const WILL_MODE_URL = "";
+
+// ============================================
+// DEVELOPER KEY
+// ============================================
+const DEVELOPER_KEY = "0105075874088";
+
+// ============================================
+// BULKSMS API
+// ============================================
+
+function getBulkSMSAuth() {
+    return "Basic " + btoa(BULKSMS_TOKEN_ID + ":" + BULKSMS_TOKEN_SECRET);
+}
+
+async function sendBulkSMS(phoneNumber, message) {
+    if (!BULKSMS_TOKEN_ID || !BULKSMS_TOKEN_SECRET) {
+        return { success: false, message: "SMS not configured (missing secrets.js)" };
+    }
+    let cleanNumber = phoneNumber.replace(/\s/g, "");
+    if (!cleanNumber.startsWith("+") && !cleanNumber.startsWith("27")) {
+        cleanNumber = "27" + cleanNumber.replace(/^0+/, "");
+    }
+    if (!cleanNumber.startsWith("+")) cleanNumber = "+" + cleanNumber;
+
+    try {
+        const response = await fetch(BULKSMS_MESSAGES_URL, {
+            method: "POST",
+            headers: {
+                "Authorization": getBulkSMSAuth(),
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                "to": cleanNumber,
+                "body": message,
+                "encoding": "UTF-8",
+                "longMessageMaxParts": 5
+            })
+        });
+        const data = await response.json();
+        return response.ok ? { success: true, data } : { success: false, error: data, message: data.message || "SMS failed" };
+    } catch (error) {
+        return { success: false, error: error.message, message: "Network error" };
+    }
+}
+
+// ============================================
+// RESEND EMAIL
+// ============================================
+
+async function sendResendEmail(email, subject, message) {
+    if (!RESEND_API_KEY) {
+        return { success: false, message: "Email not configured (missing secrets.js)" };
+    }
+    try {
+        const payload = {
+            from: RESEND_FROM_EMAIL,
+            to: [email],
+            subject: subject,
+            text: message,
+            html: message.replace(/\n/g, "<br>")
+        };
+
+        const response = await fetch(RESEND_EMAIL_URL, {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + RESEND_API_KEY,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) return { success: true, data: data, message: "Email sent successfully" };
+
+        let errorMsg = data.message || "Email send failed";
+        if (data.statusCode === 403) errorMsg = "Domain not verified in Resend dashboard.";
+        else if (data.statusCode === 422) errorMsg = "Invalid email address: " + JSON.stringify(data.errors);
+        return { success: false, error: data, message: errorMsg };
+    } catch (error) {
+        return { success: false, error: error.message, message: "Network error sending email" };
+    }
+}
+
+// ============================================
+// SEND EMERGENCY MESSAGES
+// ============================================
+
+async function sendEmergencyMessages(message, contacts, type) {
+    const results = [];
+    const smsLog = document.getElementById("smsLog");
+    const smsStatus = document.getElementById("smsStatus");
+
+    if (smsStatus) smsStatus.classList.remove("hidden");
+    if (smsLog) smsLog.innerHTML = "📨 Sending emergency messages...\n";
+
+    const contactList = Object.values(contacts).filter((c) => c && c.active !== false);
+
+    if (contactList.length === 0) {
+        const msg = "❌ No active emergency contacts found!";
+        if (smsLog) smsLog.innerHTML += msg;
+        return { success: false, error: msg };
+    }
+
+    for (let i = 0; i < contactList.length; i++) {
+        const contact = contactList[i];
+        const name = contact.name || "Emergency Contact";
+        const phone = contact.phone;
+        const email = contact.email;
+        const result = { contact, sms: null, email: null };
+
+        if (phone) {
+            if (smsLog) smsLog.innerHTML += `📤 SMS to ${name} (${phone})...\n`;
+            const smsResult = await sendBulkSMS(phone, message);
+            result.sms = smsResult;
+            if (smsLog) smsLog.innerHTML += smsResult.success ? `✅ SMS sent to ${name}\n` : `❌ SMS failed to ${name}: ${smsResult.message}\n`;
+        }
+
+        if (email) {
+            const subject = type === "will" ? "📜 DEAD HAND WILL ALERT" : "🚨 DEAD HAND SAFETY ALERT";
+            if (smsLog) smsLog.innerHTML += `📤 Email to ${name} (${email})...\n`;
+            const emailResult = await sendResendEmail(email, subject, message);
+            result.email = emailResult;
+            if (smsLog) smsLog.innerHTML += emailResult.success ? `✅ Email sent to ${name}\n` : `❌ Email failed to ${name}: ${emailResult.message}\n`;
+        }
+
+        results.push(result);
+        if (i < contactList.length - 1) await new Promise((r) => setTimeout(r, 1000));
+    }
+
+    const smsSent = results.filter((r) => r.sms && r.sms.success).length;
+    const emailSent = results.filter((r) => r.email && r.email.success).length;
+    const totalSent = smsSent + emailSent;
+    const totalAttempts = results.reduce((a, r) => a + (r.sms ? 1 : 0) + (r.email ? 1 : 0), 0);
+
+    if (smsLog) smsLog.innerHTML += `\n📊 SMS: ${smsSent} sent | Email: ${emailSent} sent | Total: ${totalSent}/${totalAttempts}`;
+
+    return { success: totalSent > 0, results };
+}
+
+// ============================================
+// FIREBASE HELPERS
+// ============================================
+
+function saveUserDataToFirebase(data) {
+    const userRef = database.ref("users/" + DEVICE_ID);
+    const now = Date.now();
+
+    const userData = {
+        profile: {
+            name: data.name || "User",
+            email: data.email || "",
+            deviceId: DEVICE_ID,
+            createdAt: data.createdAt || now,
+            updatedAt: now,
+            lastActive: now
+        },
+        updatedAt: now
+    };
+
+    if (data.type === "will") {
+        const recipients = {};
+        Object.keys(data.recipients || {}).forEach(function(key) {
+            const r = data.recipients[key];
+            if (r) recipients[key] = {
+                name: r.name || "", email: r.email || "", phone: r.phone || "",
+                active: r.active !== false,
+                priority: r.priority || parseInt(key.split("_")[1]) || 0
+            };
+        });
+        userData.willMode = {
+            enabled: true,
+            will: { title: data.where || "", message: data.will || "", createdAt: data.createdAt || now, updatedAt: now },
+            timer: { durationMs: data.durationMs, startedAt: data.startedAt || now, expiresAt: data.expiresAt || (now + data.durationMs), active: true, triggered: false, triggeredAt: 0 },
+            recipients,
+            durationLimits: { minimum: { value: 1, unit: "minute" }, maximum: { value: 7, unit: "year" } },
+            status: "armed"
+        };
+    }
+
+    if (data.type === "safety") {
+        const emergencyContacts = {};
+        if (data.contact1 && (data.contact1.phone || data.contact1.email)) emergencyContacts.contact_1 = {
+            name: data.contact1.name || "Emergency Contact 1", phone: data.contact1.phone || "", email: data.contact1.email || "", active: true, priority: 1
+        };
+        if (data.contact2 && (data.contact2.phone || data.contact2.email)) emergencyContacts.contact_2 = {
+            name: data.contact2.name || "Emergency Contact 2", phone: data.contact2.phone || "", email: data.contact2.email || "", active: true, priority: 2
+        };
+        userData.safetyMode = {
+            enabled: true,
+            timer: { durationMs: data.durationMs || 0, startedAt: data.startedAt || now, expiresAt: data.expiresAt || (now + (data.durationMs || 0)), active: true, triggered: false, triggeredAt: 0 },
+            message: data.message || "",
+            emergencyContacts,
+            status: "armed"
+        };
+    }
+
+    return userRef.update(userData);
+}
+
+function saveEmergencyEventToFirebase(message, lat, lon, deliveryResults, type) {
+    const newEventRef = database.ref("deliveryEvents").push();
+    const data = JSON.parse(localStorage.getItem("dh_data") || "{}");
+    const contacts = data.type === "will" ? (data.recipients || {}) : JSON.parse(localStorage.getItem("dh_contacts") || "{}");
+
+    const eventData = {
+        deviceId: DEVICE_ID,
+        mode: type || data.type || "safety",
+        message,
+        createdAt: Date.now(),
+        triggeredAt: Date.now(),
+        status: deliveryResults && deliveryResults.success ? "sent" : "failed",
+        location: {
+            latitude: lat ? parseFloat(lat) : (lastLatitude || 0),
+            longitude: lon ? parseFloat(lon) : (lastLongitude || 0),
+            locationLink: "https://maps.google.com/?q=" + (lat || lastLatitude || 0) + "," + (lon || lastLongitude || 0)
+        },
+        recipients: {}
+    };
+
+    Object.keys(contacts).forEach(function(key) {
+        const c = contacts[key];
+        if (!c) return;
+        eventData.recipients[key] = {
+            name: c.name || key, phone: c.phone || "", email: c.email || "", priority: c.priority || 0, active: c.active !== false,
+            sms: { enabled: !!c.phone, status: "pending", sentAt: 0, providerId: "", error: "" },
+            emailDelivery: { enabled: !!c.email, status: "pending", sentAt: 0, providerId: "", error: "" }
+        };
+    });
+
+    return newEventRef.set(eventData);
+}
+
+// ============================================
+// GLOBALS
+// ============================================
+
+let deadline = 0;
+let interval = null;
+let gpsWatch = null;
+let lastLatitude = null;
+let lastLongitude = null;
+let lastAccuracy = null;
+let triggered = false;
+let willRecipientCount = 0;
+
+let groupCode = null;
+let groupMyName = "";
+let groupAlertDistance = 100;
+let groupTrackingActive = false;
+let groupPushTimer = null;
+let groupMembers = {};
+let groupLastAlertAt = {};
+
+let mapSafety = null, mapArmed = null, mapGroup = null;
+let markerSafety = null, markerArmed = null;
+let groupMarkers = {};
+
+function $(id) { return document.getElementById(id); }
+
+// ============================================
+// BACKEND ADAPTER
+// ============================================
+
+function backendConnect(p) {
+    if (BACKEND === "wsjs" && window.DHBackend && window.DHBackend.connect) {
+        try { window.DHBackend.connect(p); } catch(e){}
+        updateBackendStatus("wsjs", "connected"); return;
+    }
+    firebaseConnect(p); updateBackendStatus("firebase", "connected");
+}
+function backendDisconnect() {
+    if (BACKEND === "wsjs" && window.DHBackend && window.DHBackend.disconnect) {
+        try { window.DHBackend.disconnect(); } catch(e){}
+        updateBackendStatus("wsjs", "disconnected"); return;
+    }
+    firebaseDisconnect(); updateBackendStatus("firebase", "disconnected");
+}
+function backendPushPosition(pos) {
+    if (BACKEND === "wsjs" && window.DHBackend && window.DHBackend.pushPosition) {
+        try { window.DHBackend.pushPosition(pos); } catch(e){} return;
+    }
+    firebasePushPosition(pos);
+}
+function backendSendFarAlert(p) {
+    if (BACKEND === "wsjs" && window.DHBackend && window.DHBackend.sendFarAlert) {
+        try { window.DHBackend.sendFarAlert(p); } catch(e){} return;
+    }
+    firebaseSendFarAlert(p);
+}
+function backendOnMemberUpdate(cb) {
+    if (BACKEND === "wsjs" && window.DHBackend && window.DHBackend.onMemberUpdate) {
+        try { window.DHBackend.onMemberUpdate(cb); } catch(e){} return;
+    }
+    firebaseOnMemberUpdate(cb);
+}
+function backendOnAlert(cb) {
+    if (BACKEND === "wsjs" && window.DHBackend && window.DHBackend.onAlert) {
+        try { window.DHBackend.onAlert(cb); } catch(e){} return;
+    }
+    firebaseOnAlert(cb);
+}
+function updateBackendStatus(which, state) {
+    const el = $("g_backendStatus"); if (!el) return;
+    const cls = state === "connected" ? "ok" : (state === "disconnected" ? "warn" : "err");
+    el.innerHTML = 'Backend: ' + which + ' • <span class="' + cls + '">' + state + '</span>';
+}
+
+// ============================================
+// FIREBASE GROUP IMPL
+// ============================================
+
+let fbMembersRef = null, fbMembersListener = null;
+let fbAlertsRef = null, fbAlertsListener = null;
+
+function firebaseConnect({ groupCode: gc, myDeviceId }) {
+    firebaseDisconnect();
+    fbMembersRef = database.ref("groups/" + gc + "/members");
+    fbMembersListener = fbMembersRef.on("value", function(snap) {
+        const members = snap.val() || {};
+        groupMembers = members;
+        renderGroupMembers(members);
+        updateGroupMap(members);
+        evaluateDistances(members);
+    }, function(err){ console.warn("fb members err", err.message); });
+
+    fbAlertsRef = database.ref("groups/" + gc + "/alerts/" + myDeviceId);
+    fbAlertsListener = fbAlertsRef.on("child_added", function(snap) {
+        const a = snap.val(); if (!a) return;
+        if (Date.now() - (a.createdAt || 0) > 120000) return;
+        showGroupAlert(a);
+    }, function(err){ console.warn("fb alerts err", err.message); });
+}
+
+function firebaseDisconnect() {
+    if (fbMembersRef && fbMembersListener) fbMembersRef.off("value", fbMembersListener);
+    fbMembersRef = null; fbMembersListener = null;
+    if (fbAlertsRef && fbAlertsListener) fbAlertsRef.off("child_added", fbAlertsListener);
+    fbAlertsRef = null; fbAlertsListener = null;
+    if (groupCode) database.ref("groups/" + groupCode + "/members/" + DEVICE_ID)
+        .update({ online: false, updatedAt: Date.now() }).catch(()=>{});
+}
+
+function firebasePushPosition({ lat, lon, accuracy, timestamp }) {
+    if (!groupCode) return;
+    database.ref("groups/" + groupCode + "/members/" + DEVICE_ID).set({
+        name: groupMyName, lat, lon, accuracy,
+        updatedAt: timestamp || Date.now(), online: true, deviceId: DEVICE_ID
+    }).catch((e) => console.warn("fb push err", e.message));
+}
+
+function firebaseSendFarAlert({ targetDeviceId, distance, myLat, myLon, myName }) {
+    if (!groupCode) return;
+    database.ref("groups/" + groupCode + "/alerts/" + targetDeviceId).push().set({
+        fromDeviceId: DEVICE_ID,
+        fromName: myName || groupMyName || "Member",
+        distance: Math.round(distance),
+        myLat, myLon,
+        mapLink: "https://maps.google.com/?q=" + myLat + "," + myLon,
+        createdAt: Date.now()
+    }).catch((e) => console.warn("fb alert err", e.message));
+}
+
+function firebaseOnMemberUpdate() {}
+function firebaseOnAlert() {}
+
+// ============================================
+// PREMIUM GATE & DEV KEY
+// ============================================
+
+function isPremium(mode) {
+    if (mode === "safety") return localStorage.getItem("dh_premium_safety") === "1";
+    if (mode === "will")   return localStorage.getItem("dh_premium_will") === "1";
+    return false;
+}
+function setPremium(mode, on) {
+    if (mode === "safety") localStorage.setItem("dh_premium_safety", on ? "1" : "0");
+    if (mode === "will")   localStorage.setItem("dh_premium_will", on ? "1" : "0");
+    refreshLockIcons();
+}
+function refreshLockIcons() {
+    const ls = $("lockSafety"); if (ls) ls.textContent = isPremium("safety") ? "🔓" : "🔒";
+    const lw = $("lockWill");   if (lw) lw.textContent = isPremium("will")   ? "🔓" : "🔒";
+}
+
+function openPremiumScreen(mode) {
+    const title = $("premiumTitle"), feats = $("premiumFeatures");
+    if (mode === "safety") {
+        if (title) title.textContent = "Unlock SAFETY MODE — countdown timer with SMS + Email alerts.";
+        if (feats) feats.innerHTML =
+            "<li>Countdown timer 1 min – 24 hrs</li>" +
+            "<li>SMS + Email to 2 emergency contacts</li>" +
+            "<li>Live GPS map included in every alert</li>";
+    } else {
+        if (title) title.textContent = "Unlock WILL MODE — send your last message automatically.";
+        if (feats) feats.innerHTML =
+            "<li>Up to 7 recipients</li>" +
+            "<li>SMS + Email delivery</li>" +
+            "<li>Duration from 1 minute to 7 years</li>" +
+            "<li>Live GPS map included</li>";
+    }
+    openScreen("premium");
+}
+
+function startPayment() {
+    // TODO: paste your payment gateway URL here
+    alert("💳 Payment gateway placeholder.\n\nPaste your payment URL inside startPayment() when ready.\n\nFor now, use the developer key to unlock for testing.");
+}
+
+function openDeveloperScreen() {
+    const inp = $("devKeyInput"), msg = $("devKeyMsg");
+    if (inp) inp.value = "";
+    if (msg) { msg.classList.add("hidden"); msg.textContent = ""; }
+    openScreen("developer");
+    setTimeout(() => { if (inp) inp.focus(); }, 150);
+}
+
+function submitDevKey() {
+    const inp = $("devKeyInput"), msg = $("devKeyMsg");
+    if (!inp) return;
+    if (inp.value.trim() === DEVELOPER_KEY) {
+        setPremium("safety", true); setPremium("will", true);
+        if (msg) { msg.className = "success"; msg.classList.remove("hidden"); msg.textContent = "✅ Developer unlock successful. Both modes unlocked."; }
+        setTimeout(() => { openScreen("home"); refreshLockIcons(); }, 900);
+    } else {
+        if (msg) { msg.className = "warning"; msg.classList.remove("hidden"); msg.textContent = "❌ Invalid key."; }
+        inp.classList.add("shake"); setTimeout(() => inp.classList.remove("shake"), 400);
+        if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+    }
+}
+
+// ============================================
+// LONG-PRESS
+// ============================================
+
+function attachLongPress(el, onTap, onLongPress, duration) {
+    if (!el) return;
+    let timer = null, longFired = false;
+    const start = () => { longFired = false; timer = setTimeout(() => { longFired = true; if (navigator.vibrate) navigator.vibrate(60); onLongPress(); }, duration || 2000); };
+    const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    const end = () => { if (timer) { clearTimeout(timer); timer = null; } if (!longFired) onTap(); };
+    el.addEventListener("mousedown", start);
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("mouseup", end);
+    el.addEventListener("touchend", end);
+    el.addEventListener("mouseleave", cancel);
+    el.addEventListener("touchcancel", cancel);
+    el.addEventListener("contextmenu", (e) => e.preventDefault());
+}
+
+function handleModeTap(mode) {
+    if (isPremium(mode)) {
+        if (mode === "safety") openScreen("safety");
+        else (WILL_MODE_URL && WILL_MODE_URL.length > 0) ? (window.location.href = WILL_MODE_URL) : openScreen("will");
+    } else openPremiumScreen(mode);
+}
+
+// ============================================
+// GROUP SAFETY MODE
+// ============================================
+
+function generateGroupCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "DH-";
+    for (let i = 0; i < 5; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+    groupCode = code;
+    const box = $("g_codeBox"); if (box) box.textContent = code;
+}
+
+function normalizeGroupCode(raw) {
+    if (!raw) return null;
+    let c = raw.trim().toUpperCase().replace(/\s/g, "");
+    if (!c.startsWith("DH-")) { c = c.replace(/^DH/, ""); c = "DH-" + c; }
+    return c;
+}
+
+function joinGroup() {
+    const inp = $("g_joinCode"); if (!inp) return;
+    const c = normalizeGroupCode(inp.value);
+    if (!c || c.length < 4) { alert("Please enter a valid group code."); return; }
+    groupCode = c;
+    const box = $("g_codeBox"); if (box) box.textContent = c;
+    alert("✅ Joined group: " + c);
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371000, toRad = (d) => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function startGroupTracking() {
+    const nameInp = $("g_name"), distInp = $("g_alertDist");
+    groupMyName = (nameInp && nameInp.value.trim()) || "Member";
+    groupAlertDistance = parseInt((distInp && distInp.value) || "100", 10);
+    if (isNaN(groupAlertDistance) || groupAlertDistance < 20) groupAlertDistance = 100;
+
+    if (!groupCode) generateGroupCode();
+    if (!groupCode) { alert("Please generate or join a group first."); return; }
+    if (!navigator.geolocation) { alert("GPS is not supported on this device."); return; }
+
+    groupTrackingActive = true;
+    initGroupMap();
+
+    if (gpsWatch !== null) { navigator.geolocation.clearWatch(gpsWatch); gpsWatch = null; }
+    gpsWatch = navigator.geolocation.watchPosition(
+        (pos) => {
+            lastLatitude = pos.coords.latitude;
+            lastLongitude = pos.coords.longitude;
+            lastAccuracy = pos.coords.accuracy || 0;
+            localStorage.setItem("dh_lat", lastLatitude);
+            localStorage.setItem("dh_lon", lastLongitude);
+            localStorage.setItem("dh_accuracy", lastAccuracy);
+            backendPushPosition({ lat: lastLatitude, lon: lastLongitude, accuracy: lastAccuracy, timestamp: Date.now() });
+            updateGroupMap(groupMembers);
+        },
+        (err) => console.warn("Group GPS err:", err.message),
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 }
+    );
+
+    if (groupPushTimer) clearInterval(groupPushTimer);
+    groupPushTimer = setInterval(() => {
+        if (lastLatitude != null) backendPushPosition({ lat: lastLatitude, lon: lastLongitude, accuracy: lastAccuracy || 0, timestamp: Date.now() });
+    }, 5000);
+
+    backendConnect({ groupCode, myDeviceId: DEVICE_ID, myName: groupMyName });
+    backendOnMemberUpdate((members) => {
+        groupMembers = members || {};
+        renderGroupMembers(groupMembers);
+        updateGroupMap(groupMembers);
+        evaluateDistances(groupMembers);
+    });
+    backendOnAlert((a) => showGroupAlert(a));
+
+    renderGroupMembers({});
+    alert("🚀 Group tracking started.\nShare code: " + groupCode);
+}
+
+function stopGroupTracking() {
+    groupTrackingActive = false;
+    if (groupPushTimer) { clearInterval(groupPushTimer); groupPushTimer = null; }
+    if (gpsWatch !== null && navigator.geolocation) { navigator.geolocation.clearWatch(gpsWatch); gpsWatch = null; }
+    backendDisconnect();
+
+    const list = $("g_members");
+    if (list) list.innerHTML = '<div class="info" style="margin-top:4px;">Tracking stopped.</div>';
+    if (groupMarkers) {
+        Object.keys(groupMarkers).forEach((k) => { if (mapGroup && groupMarkers[k]) mapGroup.removeLayer(groupMarkers[k]); });
+        groupMarkers = {};
+    }
+    alert("🛑 Group tracking stopped.");
+}
+
+function renderGroupMembers(members) {
+    const list = $("g_members"); if (!list) return;
+    const keys = Object.keys(members || {});
+    if (keys.length === 0) {
+        list.innerHTML = '<div class="info" style="margin-top:4px;">No members yet. Share the code so friends can join.</div>';
+        return;
+    }
+    const now = Date.now();
+    list.innerHTML = keys.map((k) => {
+        const m = members[k]; if (!m) return "";
+        const isMe = (k === DEVICE_ID);
+        const ageSec = Math.round((now - (m.updatedAt || 0)) / 1000);
+        const stale = ageSec > 30 || m.online === false;
+        let distText = "—", far = false;
+        if (lastLatitude != null && m.lat != null && !isMe) {
+            const d = haversine(lastLatitude, lastLongitude, m.lat, m.lon);
+            distText = Math.round(d) + "m"; far = d > groupAlertDistance;
+        } else if (isMe) distText = "you";
+        const dot = stale ? "⚪" : (far ? "🔴" : "🟢");
+        const nameLabel = (m.name || "Member") + (isMe ? " (you)" : "");
+        return '<div class="member-row"><span class="member-name">' + escapeHtml(nameLabel) + '</span>' +
+               '<span class="member-dist' + (far ? " far" : "") + '">' + dot + " " + distText + (far ? " ⚠️ FAR" : "") + '</span></div>';
+    }).filter(Boolean).join("");
+}
+
+function evaluateDistances(members) {
+    if (!groupTrackingActive || !groupCode) return;
+    if (lastLatitude == null || lastLongitude == null) return;
+    const now = Date.now();
+    Object.keys(members || {}).forEach((k) => {
+        if (k === DEVICE_ID) return;
+        const m = members[k]; if (!m || m.lat == null) return;
+        if ((now - (m.updatedAt || 0)) / 1000 > 30) return;
+        const d = haversine(lastLatitude, lastLongitude, m.lat, m.lon);
+        if (d > groupAlertDistance) {
+            const lastAt = groupLastAlertAt[k] || 0;
+            if (now - lastAt > 60000) {
+                groupLastAlertAt[k] = now;
+                backendSendFarAlert({ targetDeviceId: k, distance: d, myLat: lastLatitude, myLon: lastLongitude, myName: groupMyName });
+            }
+        }
+    });
+}
+
+function showGroupAlert(a) {
+    const area = $("g_alertArea");
+    const mapLink = a.mapLink || "";
+    const html = '<div class="group-alert-banner">⚠️ <b>' + escapeHtml(a.fromName || "Member") + '</b> is ' + Math.round(a.distance || 0) + 'm away from you!' +
+                 '<br>Their live location: ' + (mapLink ? '<a href="' + mapLink + '" target="_blank">🗺️ Open map</a>' : 'unavailable') + '</div>';
+    if (area) area.insertAdjacentHTML("afterbegin", html);
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 300]);
+    try { alert("⚠️ " + (a.fromName || "Member") + " is " + Math.round(a.distance || 0) + "m away from you!\n\nTheir location:\n" + mapLink); } catch(e){}
+}
+
+// ============================================
+// LEAFLET MAPS
+// ============================================
+
+function makeMap(containerId) {
+    if (!$(containerId) || !window.L) return null;
+    const map = L.map(containerId, { zoomControl: true, attributionControl: false }).setView([0, 0], 2);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+    return map;
+}
+function initSafetyMap() { if (!mapSafety) mapSafety = makeMap("s_map"); return mapSafety; }
+function initArmedMap()   { if (!mapArmed)  mapArmed  = makeMap("armedMap"); return mapArmed; }
+function initGroupMap()   { if (!mapGroup)  mapGroup  = makeMap("g_map"); return mapGroup; }
+
+function updateSafetyMap(lat, lon) {
+    const map = initSafetyMap(); if (!map) return;
+    map.setView([lat, lon], 16);
+    if (markerSafety) map.removeLayer(markerSafety);
+    markerSafety = L.marker([lat, lon]).addTo(map).bindPopup("You are here");
+}
+function updateArmedMap(lat, lon) {
+    const map = initArmedMap(); if (!map) return;
+    map.setView([lat, lon], 16);
+    if (markerArmed) map.removeLayer(markerArmed);
+    markerArmed = L.marker([lat, lon]).addTo(map).bindPopup("Last known");
+}
+function updateGroupMap(members) {
+    const map = initGroupMap(); if (!map) return;
+    const bounds = [];
+    Object.keys(members || {}).forEach((k) => {
+        const m = members[k]; if (!m || m.lat == null) return;
+        const isMe = (k === DEVICE_ID);
+        const nameLabel = (m.name || "Member") + (isMe ? " (you)" : "");
+        const color = isMe ? "#22c55e" : "#7c3aed";
+        if (!groupMarkers[k]) groupMarkers[k] = L.circleMarker([m.lat, m.lon], { radius: 10, color, fillColor: color, fillOpacity: 0.9, weight: 2 }).addTo(map).bindPopup(nameLabel);
+        else groupMarkers[k].setLatLng([m.lat, m.lon]).setPopupContent(nameLabel);
+        bounds.push([m.lat, m.lon]);
+    });
+    if (bounds.length === 1) map.setView(bounds[0], 16);
+    else if (bounds.length > 1) map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 });
+}
+
+// ============================================
+// NAVIGATION
+// ============================================
+
+function showBackButton(show) {
+    const btn = $("backBtn"); if (!btn) return;
+    if (show) btn.classList.add("visible"); else btn.classList.remove("visible");
+}
+function goBack() { openScreen('home'); }
+
+function openScreen(name) {
+    ['homeScreen', 'safetyScreen', 'willScreen', 'armedScreen',
+     'premiumScreen', 'developerScreen', 'groupScreen',
+     'aboutScreen', 'policyScreen'].forEach(function(id) {
+        const el = $(id); if (el) el.classList.add('hidden');
+    });
+    const target = $(name + 'Screen'); if (target) target.classList.remove('hidden');
+
+    if (name === 'home') showBackButton(false); else showBackButton(true);
+
+    if (name === 'safety' || name === 'armed') startGPS();
+    if (name === 'armed') updateArmedLocation();
+    if (name === 'home') refreshLockIcons();
+
+    setTimeout(() => {
+        if (mapSafety) mapSafety.invalidateSize();
+        if (mapArmed)  mapArmed.invalidateSize();
+        if (mapGroup)  mapGroup.invalidateSize();
+    }, 200);
+
+    checkBanner();
+}
+
+// ============================================
+// TIME CALC
+// ============================================
+
+function getSafetyMs() {
+    const number = parseFloat($("s_num").value);
+    if (isNaN(number) || number <= 0) { alert("Safety duration must be at least 1 minute."); return null; }
+    const unit = $("s_unit").value;
+    const minutes = unit === "minutes" ? number : number * 60;
+    if (minutes < 1) { alert("Safety Mode minimum is 1 minute."); return null; }
+    if (minutes > 24 * 60) { alert("Safety Mode maximum is 24 hours."); return null; }
+    return minutes * 60 * 1000;
+}
+function getWillMs() {
+    const number = parseFloat($("w_num").value);
+    if (isNaN(number) || number <= 0) { alert("Please enter a valid Will duration."); return null; }
+    const unit = $("w_unit").value;
+    const mult = { minutes: 60000, hours: 3600000, days: 86400000, months: 2592000000, years: 31536000000 };
+    const ms = number * (mult[unit] || mult.minutes);
+    const max = 7 * 365 * 24 * 60 * 60 * 1000;
+    if (ms < 60000) { alert("Will Mode minimum is 1 minute."); return null; }
+    if (ms > max) { alert("Will Mode maximum is 7 years."); return null; }
+    return ms;
+}
+
+// ============================================
+// WILL RECIPIENTS
+// ============================================
+
+function addWillRecipient(existing) {
+    const container = document.getElementById("willRecipients"); if (!container) return;
+    const current = container.querySelectorAll(".will-recipient").length;
+    if (current >= 7) { alert("You can add a maximum of 7 Will recipients."); return; }
+    const index = current + 1;
+    const div = document.createElement("div");
+    div.className = "will-recipient"; div.dataset.index = String(index);
+    div.innerHTML = `
+        <div class="recipient-header">
+            <strong>RECIPIENT ${index}</strong>
+            <button type="button" class="btn btn-dark btn-small" onclick="removeWillRecipient(${index})">REMOVE</button>
+        </div>
+        <input class="will-name" type="text" placeholder="Name" value="${escapeHtml(existing?.name || "")}">
+        <input class="will-email" type="email" placeholder="Email address" value="${escapeHtml(existing?.email || "")}">
+        <input class="will-phone" type="tel" placeholder="Alternative phone number" value="${escapeHtml(existing?.phone || "")}">
+        <label class="inline"><input class="will-active" type="checkbox" ${existing?.active !== false ? "checked" : ""}> Active</label>
+    `;
+    container.appendChild(div);
+}
+function removeWillRecipient(index) {
+    const node = document.querySelector(`.will-recipient[data-index="${index}"]`);
+    if (node) node.remove();
+    document.querySelectorAll("#willRecipients .will-recipient").forEach((el, i) => {
+        const newIndex = i + 1;
+        el.dataset.index = String(newIndex);
+        const header = el.querySelector(".recipient-header strong"); if (header) header.textContent = `RECIPIENT ${newIndex}`;
+        const btn = el.querySelector(".recipient-header button"); if (btn) btn.setAttribute("onclick", `removeWillRecipient(${newIndex})`);
+    });
+}
+function escapeHtml(v) {
+    return String(v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+}
+function getWillRecipients() {
+    const recipients = {};
+    document.querySelectorAll("#willRecipients .will-recipient").forEach((el, i) => {
+        const index = i + 1;
+        const email = el.querySelector(".will-email")?.value.trim() || "";
+        const phone = el.querySelector(".will-phone")?.value.trim() || "";
+        const name = el.querySelector(".will-name")?.value.trim() || "";
+        const active = !!el.querySelector(".will-active")?.checked;
+        if (name || email || phone) recipients["recipient_" + index] = { name: name || "Will Recipient " + index, email, phone, active, priority: index };
+    });
+    return recipients;
+}
+
+// ============================================
+// ARM
+// ============================================
+
+function saveAndArm(data, ms) {
+    deadline = Date.now() + ms;
+    triggered = false;
+    localStorage.setItem("dh_deadline", deadline.toString());
+    localStorage.setItem("dh_data", JSON.stringify(data));
+    localStorage.setItem("dh_armed", "1");
+    localStorage.removeItem("dh_triggered");
+
+    const smsContacts = {};
+    if (data.type === "will") {
+        Object.keys(data.recipients || {}).forEach((key) => {
+            const r = data.recipients[key];
+            if (r && (r.phone || r.email) && r.active !== false) smsContacts[key] = r;
+        });
+    } else {
+        if (data.contact1 && (data.contact1.phone || data.contact1.email)) smsContacts.contact_1 = data.contact1;
+        if (data.contact2 && (data.contact2.phone || data.contact2.email)) smsContacts.contact_2 = data.contact2;
+    }
+    localStorage.setItem("dh_contacts", JSON.stringify(smsContacts));
+
+    const modeShow = $("modeShow"); if (modeShow) modeShow.innerText = data.type.toUpperCase();
+    const whereShow = $("whereShow"); if (whereShow) whereShow.innerText = data.where || "No situation specified";
+
+    saveUserDataToFirebase(data).then(() => console.log("✅ Firebase save ok")).catch((e) => console.error("❌ Firebase save err:", e));
+
+    openScreen("armed");
+    startTimer();
+    startGPS();
+    if (navigator.vibrate) navigator.vibrate(300);
+}
+
+function arm(type) {
+    if (type === "safety") {
+        const ms = getSafetyMs(); if (!ms) return;
+        const name1 = $("s_name1").value.trim();
+        const c1 = $("s_c1").value.trim();
+        const e1 = $("s_e1").value.trim();
+        const name2 = $("s_name2").value.trim();
+        const c2 = $("s_c2").value.trim();
+        const e2 = $("s_e2").value.trim();
+
+        if (!c1 && !e1 && !c2 && !e2) { alert("Please add at least one emergency contact phone number or email."); return; }
+        if ((c1 || e1) && !name1) { alert("Please enter the name for Emergency Contact 1."); return; }
+        if ((c2 || e2) && !name2) { alert("Please enter the name for Emergency Contact 2."); return; }
+
+        const data = {
+            type: "safety",
+            where: $("s_where").value.trim(),
+            contact1: (c1 || e1) ? { name: name1, phone: c1, email: e1, priority: 1, active: true } : null,
+            contact2: (c2 || e2) ? { name: name2, phone: c2, email: e2, priority: 2, active: true } : null,
+            will: "", durationMs: ms, name: "User", email: "",
+            startedAt: Date.now(), expiresAt: Date.now() + ms
+        };
+        saveAndArm(data, ms);
+    } else {
+        const ms = getWillMs(); if (!ms) return;
+        const recipients = getWillRecipients();
+        const recipientList = Object.values(recipients).filter((r) => r.active && (r.email || r.phone));
+        if (recipientList.length === 0) { alert("Please add at least one active Will recipient with an email address or phone number."); return; }
+        for (const r of recipientList) {
+            if (r.email && !/^\S+@\S+\.\S+$/.test(r.email)) { alert("Invalid email address: " + r.email); return; }
+        }
+        const data = {
+            type: "will", willId: "will_" + DEVICE_ID,
+            where: $("w_where").value.trim(),
+            will: $("w_will").value.trim(),
+            recipients, durationMs: ms, name: "User", email: "",
+            createdAt: Date.now(), startedAt: Date.now(), expiresAt: Date.now() + ms
+        };
+        saveAndArm(data, ms);
+    }
+}
+
+// ============================================
+// GPS
+// ============================================
+
+function startGPS() {
+    if (!navigator.geolocation) { showGPSError("GPS is not supported by this device."); return; }
+    showGPSLoading();
+    const options = { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 };
+    navigator.geolocation.getCurrentPosition(
+        (pos) => updateGPS(pos),
+        (err) => {
+            console.warn("GPS Error:", err.message);
+            startGPSWatch();
+            let msg = "GPS: " + err.message;
+            if (err.code === 1) msg = "Location permission denied. Please enable GPS.";
+            else if (err.code === 2) msg = "GPS signal lost. Moving to watch mode...";
+            else if (err.code === 3) msg = "GPS timeout. Trying watch mode...";
+            showGPSError(msg);
+        },
+        options
+    );
+    startGPSWatch();
+}
+
+function startGPSWatch() {
+    if (gpsWatch !== null) { navigator.geolocation.clearWatch(gpsWatch); gpsWatch = null; }
+    gpsWatch = navigator.geolocation.watchPosition(
+        (pos) => updateGPS(pos),
+        (err) => console.warn("GPS Watch Error:", err.message),
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 }
+    );
+}
+
+function updateGPS(pos) {
+    const lat = pos.coords.latitude, lon = pos.coords.longitude, accuracy = pos.coords.accuracy || 0;
+    lastLatitude = lat; lastLongitude = lon; lastAccuracy = accuracy;
+    localStorage.setItem("dh_lat", lat); localStorage.setItem("dh_lon", lon); localStorage.setItem("dh_accuracy", accuracy);
+
+    const mapURL = "https://maps.google.com/?q=" + lat + "," + lon;
+    const html = `<div class="location-good">📍 Location found<br>${lat.toFixed(6)}, ${lon.toFixed(6)}<br>Accuracy: ${Math.round(accuracy)}m<br><a class="mapLink" href="${mapURL}" target="_blank">🗺️ OPEN IN GOOGLE MAPS</a></div>`;
+
+    const sLoc = $("s_loc"); if (sLoc) sLoc.innerHTML = html;
+    const locShow = $("locShow"); if (locShow) locShow.innerHTML = html;
+
+    if (sLoc && !$("safetyScreen").classList.contains("hidden")) updateSafetyMap(lat, lon);
+    if (locShow && !$("armedScreen").classList.contains("hidden")) updateArmedMap(lat, lon);
+}
+
+function showGPSLoading() {
+    const html = `<div class="location-loading">📍 Getting GPS location...<br><span style="font-size:10px">Please allow location permission.</span></div>`;
+    const sLoc = $("s_loc"); if (sLoc) sLoc.innerHTML = html;
+    const locShow = $("locShow"); if (locShow) locShow.innerHTML = html;
+}
+function showGPSError(message) {
+    const html = `<div class="location-error">❌ ${message}<br><br><span style="font-size:10px">Make sure Location/GPS is ON and permission is allowed.</span></div>`;
+    const sLoc = $("s_loc"); if (sLoc) sLoc.innerHTML = html;
+    const locShow = $("locShow"); if (locShow) locShow.innerHTML = html;
+}
+function requestGPS() { showGPSLoading(); startGPS(); }
+
+function updateArmedLocation() {
+    const lat = localStorage.getItem("dh_lat"), lon = localStorage.getItem("dh_lon");
+    if (!lat || !lon) { startGPS(); return; }
+    const accuracy = localStorage.getItem("dh_accuracy");
+    const mapURL = "https://maps.google.com/?q=" + lat + "," + lon;
+    const locShow = $("locShow");
+    if (locShow) locShow.innerHTML = `<div class="location-good">📍 Last known location<br>${parseFloat(lat).toFixed(6)}, ${parseFloat(lon).toFixed(6)}${accuracy ? "<br>Accuracy: " + Math.round(accuracy) + "m" : ""}<br><a class="mapLink" href="${mapURL}" target="_blank">🗺️ OPEN IN GOOGLE MAPS</a></div>`;
+    updateArmedMap(parseFloat(lat), parseFloat(lon));
+}
+
+// ============================================
+// TIMER
+// ============================================
+
+function startTimer() {
+    if (interval) clearInterval(interval);
+    updateTimer();
+    interval = setInterval(updateTimer, 1000);
+}
+function updateTimer() {
+    if (!deadline) return;
+    const left = deadline - Date.now();
+    if (left <= 0) {
+        const t = $("timer"); if (t) t.innerText = "00:00:00";
+        if (localStorage.getItem("dh_triggered") !== "1") trigger();
+        return;
+    }
+    const d = Math.floor(left / 86400000), h = Math.floor((left % 86400000) / 3600000),
+          m = Math.floor((left % 3600000) / 60000), s = Math.floor((left % 60000) / 1000);
+    const text = d > 0
+        ? d + "d " + String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0")
+        : String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+    const t = $("timer"); if (t) t.innerText = text;
+    const mt = $("miniTimer"); if (mt) mt.innerText = text;
+}
+
+// ============================================
+// CHECK-IN / DISARM / TRIGGER
+// ============================================
+
+function checkIn() {
+    const data = JSON.parse(localStorage.getItem("dh_data") || "{}");
+    const ms = data.durationMs || (data.type === "safety" ? 60 * 60 * 1000 : 365 * 24 * 60 * 60 * 1000);
+    deadline = Date.now() + ms;
+    localStorage.setItem("dh_deadline", deadline.toString());
+    localStorage.removeItem("dh_triggered");
+    triggered = false;
+    updateTimer();
+    if (navigator.vibrate) navigator.vibrate(200);
+    alert("✅ CHECK-IN SUCCESSFUL\n\nYour DEAD HAND timer has been reset.");
+}
+
+function disarm() {
+    if (!confirm("Are you sure you want to disarm DEAD HAND?")) return;
+    if (interval) clearInterval(interval);
+    if (gpsWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(gpsWatch);
+    ["dh_armed","dh_deadline","dh_data","dh_triggered","dh_lat","dh_lon","dh_accuracy","dh_contacts"].forEach((k) => localStorage.removeItem(k));
+    location.reload();
+}
+
+async function trigger() {
+    if (localStorage.getItem("dh_triggered") === "1") return;
+    localStorage.setItem("dh_triggered", "1");
+    triggered = true;
+    if (interval) clearInterval(interval);
+
+    const data = JSON.parse(localStorage.getItem("dh_data") || "{}");
+    const contacts = data.type === "will" ? data.recipients || {} : JSON.parse(localStorage.getItem("dh_contacts") || "{}");
+    const lat = localStorage.getItem("dh_lat"), lon = localStorage.getItem("dh_lon");
+    const locationText = (lat && lon) ? "https://maps.google.com/?q=" + lat + "," + lon : "Location unavailable";
+
+    let message;
+    if (data.type === "safety") {
+        message = "🚨 DEAD HAND SAFETY ALERT 🚨\n\nI did not come back" + (data.where ? " from " + data.where : "") + ".\n\nMy last known location is:\n" + locationText + "\n\nCoordinates:\n" + (lat || "Unknown") + ", " + (lon || "Unknown") + "\n\nTime:\n" + new Date().toLocaleString();
+    } else {
+        message = "📜 DEAD HAND WILL ALERT 📜\n\nSituation:\n" + (data.where || "Not specified") + "\n\nLAST MESSAGE / WILL:\n\n" + (data.will || "No message provided.") + "\n\nLast known location:\n" + locationText + "\n\nCoordinates:\n" + (lat || "Unknown") + ", " + (lon || "Unknown") + "\n\nTime:\n" + new Date().toLocaleString();
+    }
+
+    console.log("📨 Sending emergency messages...");
+    const deliveryResults = await sendEmergencyMessages(message, contacts, data.type);
+    saveEmergencyEventToFirebase(message, lat, lon, deliveryResults, data.type);
+
+    const smsSent = deliveryResults.results ? deliveryResults.results.filter((r) => r.sms && r.sms.success).length : 0;
+    const emailSent = deliveryResults.results ? deliveryResults.results.filter((r) => r.email && r.email.success).length : 0;
+    const totalSent = smsSent + emailSent;
+
+    alert("🚨 DEAD HAND FIRED!\n\n✅ SMS sent: " + smsSent + "\n✅ Email sent: " + emailSent + "\nTotal: " + totalSent + " messages delivered.\n\nCheck the Delivery Status log for details.");
+}
+
+// ============================================
+// BANNER & RESUME
+// ============================================
+
+function checkBanner() {
+    const armed = localStorage.getItem("dh_armed");
+    if (armed === "1") {
+        const data = JSON.parse(localStorage.getItem("dh_data") || "{}");
+        const savedDeadline = localStorage.getItem("dh_deadline");
+        if (savedDeadline) deadline = parseInt(savedDeadline, 10);
+        const banner = $("activeBanner"); if (banner) banner.classList.remove("hidden");
+        const at = $("activeText");
+        if (at) at.innerText = (data.type || "SYSTEM").toUpperCase() + " ARMED" + (data.where ? " • " + data.where : "");
+        updateTimer();
+    } else {
+        const banner = $("activeBanner"); if (banner) banner.classList.add("hidden");
+    }
+}
+
+function resumeArmed() {
+    const data = JSON.parse(localStorage.getItem("dh_data") || "{}");
+    const savedDeadline = localStorage.getItem("dh_deadline");
+    if (!savedDeadline) { disarm(); return; }
+    deadline = parseInt(savedDeadline, 10);
+    const ms = $("modeShow"); if (ms) ms.innerText = (data.type || "").toUpperCase();
+    const ws = $("whereShow"); if (ws) ws.innerText = data.where || "";
+    openScreen("armed");
+    startTimer();
+    startGPS();
+}
+
+// ============================================
+// SERVICE WORKER
+// ============================================
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW reg fail", e));
+    });
+}
+
+// ============================================
+// PAGE LOAD
+// ============================================
+window.addEventListener("load", function() {
+    attachLongPress($("btnSafety"), () => handleModeTap("safety"), openDeveloperScreen, 2000);
+    attachLongPress($("btnWill"),   () => handleModeTap("will"),   openDeveloperScreen, 2000);
+    refreshLockIcons();
+
+    if ($("willRecipients") && willRecipientCount === 0) addWillRecipient();
+
+    const armed = localStorage.getItem("dh_armed");
+    const savedDeadline = localStorage.getItem("dh_deadline");
+    if (armed === "1" && savedDeadline) {
+        deadline = parseInt(savedDeadline, 10);
+        const data = JSON.parse(localStorage.getItem("dh_data") || "{}");
+        const banner = $("activeBanner"); if (banner) banner.classList.remove("hidden");
+        const at = $("activeText");
+        if (at) at.innerText = (data.type || "").toUpperCase() + " ARMED";
+        if (deadline <= Date.now()) { openScreen("armed"); trigger(); return; }
+        checkBanner();
+    }
+});
+
+</script>
+
+</body>
+</html>
